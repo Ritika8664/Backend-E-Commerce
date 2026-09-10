@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     google_api_key: str
     gemini_model: str = "gemini-2.0-flash"
     jwt_algorithm: str = "HS256"
+    # Local-only fallback. Render must set this to the deployed frontend origin.
     frontend_origin: str = "http://localhost:5173"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
