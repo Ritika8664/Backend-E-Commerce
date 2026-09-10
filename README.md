@@ -4,55 +4,143 @@ FastAPI backend service powering the Mini AI E-Commerce Application. Features **
 
 ---
 
-## 📋 Deliverables Overview
+## 📋 Required Deliverables Summary
 
-| Attribute | Specification |
+| Deliverable | Details |
 | :--- | :--- |
-| **Assignment** | Technical Interview Assignment 2 – Mini AI E-Commerce Application |
-| **Total Development Time** | **24 Hours** |
-| **Primary AI Coding Assistant** | **OpenAI Codex** |
-| **Backend Framework** | FastAPI (Python 3.11+) |
-| **Database** | PostgreSQL + SQLAlchemy 2.0 ORM + Alembic Migrations |
+| **Total Time Taken** | **24 Hours** |
+| **AI Tools Used** | **OpenAI Codex** |
+| **One-Page System Design** | Detailed Mermaid Architecture Diagram (UI → API → DB → Auth → Stripe → AI) |
+| **Database Schema** | Relational PostgreSQL ER Diagram & Constraints |
+| **Basic API Documentation** | Comprehensive REST Endpoints Table |
 
 ---
 
-## 🤖 AI Tools & Development Usage
+## ⏱️ Total Time Taken
+* **24 Hours** total development and architecture time.
 
-### **AI Assistant Used:** **OpenAI Codex**
-
-### **How OpenAI Codex Was Utilized:**
-* **Database Models & Alembic:** Designed SQLAlchemy ORM schema with foreign key constraints, indexes, and non-negative check constraints (`price >= 0`, `stock >= 0`).
-* **Authentication & RBAC:** Implemented Google OAuth ID token verification via `google-auth` library, JWT session generation (`python-jose`), and FastAPI dependency injection for role checks (`get_current_user`, `get_current_admin`).
-* **LangChain AI Support Agent:** Built read-only Python function tools (`search_products`, `get_product_price`, `get_order_status`) bound to PostgreSQL database models to answer customer support inquiries accurately without hallucinations.
-* **Stripe Payment Flows:** Integrated Stripe Checkout session creation, payment verification, and webhook event handling.
+## 🤖 AI Tools Used
+* **OpenAI Codex**: Used as the primary AI coding assistant for designing the database models, Alembic migrations, FastAPI endpoints, Pydantic v2 schemas, Google OAuth authentication flow, Stripe webhook integration, and LangChain AI agent database tool-calling functions.
 
 ---
 
-## 🛠️ Backend Tech Stack
+## 📐 One-Page System Design
 
-* **Framework:** Python 3.11+ / FastAPI
-* **Database:** PostgreSQL (SQLAlchemy 2.0 ORM + Alembic migrations)
-* **Auth & Security:** `google-auth` (Google OAuth ID Token Verification), `python-jose` (JWT), `passlib` / `bcrypt`
-* **AI Support Agent:** `langchain`, `langgraph`, `langchain-google-genai`
-* **Payments:** `stripe` (Stripe Checkout & Webhooks)
-* **Server:** Uvicorn ASGI Server
+```mermaid
+flowchart TD
+    subgraph Client ["Client Layer (Frontend - React + TypeScript)"]
+        ReactUI["React + TypeScript + Tailwind CSS + Shadcn UI"]
+        GoogleAuthClient["Google OAuth SDK (@react-oauth/google)"]
+    end
+
+    subgraph API ["API Layer (FastAPI Backend)"]
+        FastAPI["FastAPI App Server (Uvicorn)"]
+        AuthModule["Google OAuth & JWT Service"]
+        OrderModule["Order & Stock Engine"]
+        PaymentModule["Stripe Payment Integration"]
+        AIAgent["LangChain AI Support Agent"]
+    end
+
+    subgraph Data ["Data & Storage Layer"]
+        Postgres[(PostgreSQL Database)]
+        Alembic["Alembic Migrations"]
+    end
+
+    subgraph External ["External Services"]
+        GoogleOAuth["Google Auth APIs"]
+        StripeAPI["Stripe API & Webhooks"]
+        LLMProvider["OpenAI / Gemini LLM"]
+    end
+
+    ReactUI -->|HTTPS / REST API| FastAPI
+    GoogleAuthClient -->|Obtains ID Token| GoogleOAuth
+    ReactUI -->|Sends ID Token| AuthModule
+    AuthModule -->|Verifies Token| GoogleOAuth
+
+    FastAPI -->|ORM Queries| Postgres
+    OrderModule -->|Stock Verification & Transactions| Postgres
+    
+    PaymentModule -->|Checkout Sessions & Webhooks| StripeAPI
+    ReactUI -->|Redirects & Payment Verification| PaymentModule
+
+    ReactUI -->|POST /ai/chat| AIAgent
+    AIAgent -->|Tool Calls (Read-only Database SQL)| Postgres
+    AIAgent -->|Prompt & Context| LLMProvider
+```
 
 ---
 
-## 🔌 API Endpoints Reference
+## 🗄️ Database Schema
 
-### 🔑 Authentication (`/auth`)
+The PostgreSQL database enforces relational integrity, check constraints, non-negative pricing/stock (`price >= 0`, `stock >= 0`), and indexing on high-frequency query paths.
+
+```mermaid
+erDiagram
+    USERS ||--o{ ORDERS : places
+    PRODUCTS ||--o{ ORDER_ITEMS : contains
+    ORDERS ||--|{ ORDER_ITEMS : includes
+
+    USERS {
+        uuid id PK
+        string email UK
+        string name
+        string google_sub UK
+        enum role "CUSTOMER | ADMIN"
+        timestamp created_at
+    }
+
+    PRODUCTS {
+        uuid id PK
+        string name
+        text description
+        numeric price "Check >= 0"
+        integer stock "Check >= 0"
+        string image_url
+        boolean is_active
+        timestamp created_at
+    }
+
+    ORDERS {
+        uuid id PK
+        uuid user_id FK
+        enum status "PENDING | PAID | FAILED | CANCELLED"
+        numeric total_amount
+        string payment_reference_id
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    ORDER_ITEMS {
+        uuid id PK
+        uuid order_id FK
+        uuid product_id FK
+        integer quantity
+        numeric unit_price
+    }
+```
+
+### Schema Highlights:
+* **`users`**: Customer and admin user records. Column `google_sub` indexes unique Google IDs.
+* **`products`**: Inventory items with strict check constraints (`price >= 0`, `stock >= 0`).
+* **`orders`**: Order tracking records (`pending`, `paid`, `failed`, `cancelled`). Indexed by `user_id`.
+* **`order_items`**: Junction table recording unit prices at time of order creation.
+
+---
+
+## 🔌 Basic API Documentation
+
+### 🔑 Authentication Endpoints (`/auth`)
 | Method | Endpoint | Access | Description |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/auth/google` | Public | Validates Google ID token, registers new user if needed, returns JWT. |
+| `POST` | `/auth/google` | Public | Validates Google OAuth ID token, registers user if new, returns JWT token. |
 | `POST` | `/auth/login` | Public | Standard login with email/password (testing/admin). |
-| `GET` | `/auth/me` | Authenticated | Fetches profile info for current user. |
+| `GET` | `/auth/me` | Authenticated | Fetches profile info for current authenticated user. |
 
 ### 🛍️ Product Management (`/products` & `/admin/products`)
 | Method | Endpoint | Access | Description |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/products` | Public | List active product catalog. |
-| `GET` | `/products/{id}` | Public | Fetch product details by ID. |
+| `GET` | `/products` | Public | List all active products. |
+| `GET` | `/products/{id}` | Public | Fetch single product details by ID. |
 | `POST` | `/admin/products` | Admin | Create a new product. |
 | `PUT` | `/admin/products/{id}` | Admin | Update existing product details & inventory stock. |
 | `DELETE` | `/admin/products/{id}` | Admin | Delete a product. |
@@ -60,11 +148,11 @@ FastAPI backend service powering the Mini AI E-Commerce Application. Features **
 ### 📦 Order Management (`/orders` & `/admin/orders`)
 | Method | Endpoint | Access | Description |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/orders` | Authenticated | Validate stock and create a new pending order. |
+| `POST` | `/orders` | Authenticated | Validate item stock and create a pending order. |
 | `GET` | `/orders/me` | Customer | Fetch current customer's order history. |
 | `GET` | `/orders/{id}` | Customer | Fetch specific order (enforces user ownership). |
 | `GET` | `/admin/orders` | Admin | Fetch all orders across all customers. |
-| `PATCH` | `/admin/orders/{id}/status` | Admin | Update order fulfillment status (`pending`, `paid`, `failed`, `cancelled`). |
+| `PATCH` | `/admin/orders/{id}/status` | Admin | Update order status (`pending`, `paid`, `failed`, `cancelled`). |
 
 ### 💳 Stripe Payments (`/payments` & `/webhooks`)
 | Method | Endpoint | Access | Description |
