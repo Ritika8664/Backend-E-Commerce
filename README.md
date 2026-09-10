@@ -52,20 +52,20 @@ flowchart TD
         LLMProvider["OpenAI / Gemini LLM"]
     end
 
-    ReactUI -->|HTTPS / REST API| FastAPI
-    GoogleAuthClient -->|Obtains ID Token| GoogleOAuth
-    ReactUI -->|Sends ID Token| AuthModule
-    AuthModule -->|Verifies Token| GoogleOAuth
+    ReactUI -->|"HTTPS / REST API"| FastAPI
+    GoogleAuthClient -->|"Obtains ID Token"| GoogleOAuth
+    ReactUI -->|"Sends ID Token"| AuthModule
+    AuthModule -->|"Verifies Token"| GoogleOAuth
 
-    FastAPI -->|ORM Queries| Postgres
-    OrderModule -->|Stock Verification & Transactions| Postgres
+    FastAPI -->|"ORM Queries"| Postgres
+    OrderModule -->|"Stock Verification & Transactions"| Postgres
     
-    PaymentModule -->|Checkout Sessions & Webhooks| StripeAPI
-    ReactUI -->|Redirects & Payment Verification| PaymentModule
+    PaymentModule -->|"Checkout Sessions & Webhooks"| StripeAPI
+    ReactUI -->|"Redirects & Payment Verification"| PaymentModule
 
-    ReactUI -->|POST /ai/chat| AIAgent
-    AIAgent -->|Tool Calls (Read-only Database SQL)| Postgres
-    AIAgent -->|Prompt & Context| LLMProvider
+    ReactUI -->|"POST /ai/chat"| AIAgent
+    AIAgent -->|"Tool Calls - Read-only Database SQL"| Postgres
+    AIAgent -->|"Prompt & Context"| LLMProvider
 ```
 
 ---
@@ -85,7 +85,7 @@ erDiagram
         string email UK
         string name
         string google_sub UK
-        enum role "CUSTOMER | ADMIN"
+        string role "CUSTOMER or ADMIN"
         timestamp created_at
     }
 
@@ -93,8 +93,8 @@ erDiagram
         uuid id PK
         string name
         text description
-        numeric price "Check >= 0"
-        integer stock "Check >= 0"
+        numeric price
+        integer stock
         string image_url
         boolean is_active
         timestamp created_at
@@ -103,7 +103,7 @@ erDiagram
     ORDERS {
         uuid id PK
         uuid user_id FK
-        enum status "PENDING | PAID | FAILED | CANCELLED"
+        string status "PENDING or PAID or FAILED or CANCELLED"
         numeric total_amount
         string payment_reference_id
         timestamp created_at
